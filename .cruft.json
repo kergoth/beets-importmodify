@@ -1,0 +1,23 @@
+{
+  "template": "https://github.com/kergoth/cookiecutter-hypermodern-python",
+  "commit": "2873212caf2467d36a7da08dedd5a5ea4004052a",
+  "checkout": "beets-plugin",
+  "context": {
+    "cookiecutter": {
+      "beets_plugin_name": "importmodify",
+      "project_name": "beets-importmodify",
+      "package_name": "beetsplug.importmodify",
+      "friendly_name": "ImportModify Plugin for Beets",
+      "camel_case": "ImportModify",
+      "author": "Christopher Larson",
+      "email": "kergoth@gmail.com",
+      "github_user": "kergoth",
+      "version": "0.1.0",
+      "copyright_year": "2024",
+      "license": "MIT",
+      "development_status": "Development Status :: 1 - Planning",
+      "_template": "https://github.com/kergoth/cookiecutter-hypermodern-python"
+    }
+  },
+  "directory": null
+}
