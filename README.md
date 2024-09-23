@@ -23,7 +23,7 @@
 [ruff badge]: https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json
 [ruff project]: https://github.com/charliermarsh/ruff
 
-The [ImportModifyInfo](https://github.com/kergoth/beets-importmodifyinfo) Plugin for [Beets][] applies modify-like operations on import to alter the metadata received by importers. This is largely intended to correct issues with imported metadata which would otherwise be lost on running `mbsync`, for example. This plugin is inspired by the [ImportReplace][] Plugin and my old [modifyonimport][] plugin.
+The [ImportModifyInfo](https://github.com/kergoth/beets-importmodifyinfo) Plugin for [Beets][] applies modifications to received metadata before import. This is largely intended to correct issues with imported metadata which would otherwise be lost on running `mbsync`. This plugin is inspired by the [ImportReplace][] Plugin and my old [modifyonimport][] plugin, but I found that those modifications would often be lost when running `mbsync` or equivalent.
 
 ## Installation
 
@@ -36,11 +36,19 @@ As the beets documentation describes in [Other plugins][], to use an external pl
 
 First, enable the `importmodifyinfo` plugin (see [Using Plugins][]).
 
-Describe plugin configuration here.
+To configure the plugin, make a `importmodifyinfo:` section in your configuration file. Sections may be added for `modify_albuminfo` and `modify_trackinfo`, each of which is a list of strings as you would supply to the `modify` command. For example:
+
+```yaml
+importmodifyinfo:
+  modify_albuminfo:
+    - album:'some album' albumtype=ep albumtypes='ep; remix'
+  modify_trackinfo:
+    - album:'some album' title:'some title' title='some other title'
+```
 
 ## Using
 
-Describe plugin usage here. Please see the [Command-line Reference] for the command-line interface.
+There is no direct usage other than the configuration, as these modifications are automatically applied during the import or sync process.
 
 ## Contributing
 
@@ -70,10 +78,10 @@ This project was generated from [@cjolowicz]'s [Hypermodern Python Cookiecutter]
 [using plugins]: https://beets.readthedocs.io/en/stable/plugins/index.html#using-plugins
 [ethical source license]: https://ethicalsource.dev/faq/#what-is-an-ethical-license-for-open-source
 [importreplace]: https://github.com/edgars-supe/beets-importreplace
+[modifyonimport]: https://github.com/kergoth/beets-kergoth/blob/master/docs/modifyonimport.rst
 
 <!-- github-only -->
 
 [license]: ./LICENSE
 [contributor guide]: ./CONTRIBUTING.md
 [contributor covenant]: ./CODE_OF_CONDUCT.md
-[command-line reference]: https://beets-importmodifyinfo.readthedocs.io/en/latest/usage.html
