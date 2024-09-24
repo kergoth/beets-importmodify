@@ -1,21 +1,30 @@
 """ImportModifyInfo Plugin for Beets."""
 
 import shlex
+from typing import List
 from typing import Optional
+from typing import Union
 
-from beets.autotag import _apply_metadata
+from beets.autotag import _apply_metadata  # type: ignore
 from beets.autotag import apply_item_metadata
-from beets.autotag.hooks import AlbumInfo
+from beets.autotag.hooks import AlbumInfo  # type: ignore
 from beets.autotag.hooks import TrackInfo
-from beets.library import Album
+from beets.dbcore import Model  # type: ignore
+from beets.dbcore import Query
+from beets.library import Album  # type: ignore
 from beets.library import Item
 from beets.library import parse_query_parts
 from beets.plugins import BeetsPlugin  # type: ignore
-from beets.ui import UserError
+from beets.ui import UserError  # type: ignore
 from beets.ui import decargs
-from beets.ui.commands import modify_parse_args
-from beets.util import as_string
+from beets.ui.commands import modify_parse_args  # type: ignore
+from beets.util import as_string  # type: ignore
 from beets.util import functemplate
+
+
+Mods = dict[str, str]
+Dels = list[str]
+Rules = List[tuple[str, Query, Mods, Dels]]
 
 
 class ImportModifyInfoPlugin(BeetsPlugin):  # type: ignore
@@ -26,7 +35,7 @@ class ImportModifyInfoPlugin(BeetsPlugin):  # type: ignore
         self.config.add(
             {"enabled": True, "modify_iteminfo": [], "modify_albuminfo": []}
         )
-        self.item_rules = self.album_rules = None
+        self.configured = False
 
         if self.config["enabled"].get(bool):
             self.register_listener("trackinfo_received", self.apply_trackinfo_rules)
@@ -34,16 +43,17 @@ class ImportModifyInfoPlugin(BeetsPlugin):  # type: ignore
 
     def set_rules(self) -> None:
         """Set rules from configuration."""
-        if self.item_rules is None:
-            item_modifies = self.config["modify_iteminfo"].get(list)
+        if not self.configured:
+            item_modifies: List[str] = self.config["modify_iteminfo"].get(list)
             self.item_rules = self.get_modifies(item_modifies, Item, "modify_iteminfo")
-        if self.album_rules is None:
-            album_modifies = self.config["modify_albuminfo"].get(list)
+
+            album_modifies: List[str] = self.config["modify_albuminfo"].get(list)
             self.album_rules = self.get_modifies(
                 album_modifies, Album, "modify_albuminfo"
             )
+            self.configured = True
 
-    def get_modifies(self, items, model_cls, context):
+    def get_modifies(self, items: List[str], model_cls: Model, context: str) -> Rules:
         """Parse modify items from configuration."""
         modifies = []
         for modify in items:
@@ -54,13 +64,13 @@ class ImportModifyInfoPlugin(BeetsPlugin):  # type: ignore
                 )
             elif not mods and not dels:
                 raise UserError(
-                    f"importmodifyinfo.{context}: no modifications found in entry {modify}"
+                    f"importmodifyinfo.{context}: no mods found in entry {modify}"
                 )
             dbquery, _ = parse_query_parts(query, model_cls)
             modifies.append((modify, dbquery, mods, dels))
         return modifies
 
-    def parse_modify(self, modify):
+    def parse_modify(self, modify: str) -> tuple[str, Mods, Dels]:
         """Parse modify string into query, mods, and dels."""
         modify = as_string(modify)
         args = shlex.split(modify)
@@ -83,7 +93,13 @@ class ImportModifyInfoPlugin(BeetsPlugin):  # type: ignore
         apply_item_metadata(item, info)
         self.process_rules(self.item_rules, info, item, Item)
 
-    def process_rules(self, rules, info, obj, model_cls):
+    def process_rules(
+        self,
+        rules: Rules,
+        info: Union[TrackInfo, AlbumInfo],
+        obj: Union[Item, Album],
+        model_cls: Model,
+    ) -> None:
         """Process rules for info on an object."""
         for _, query, mods, dels in rules:
             templates = {
@@ -108,12 +124,12 @@ class ImportModifyInfoPlugin(BeetsPlugin):  # type: ignore
                         info[field] = obj[field]
 
 
-def format_item(info):
+def format_item(info: Union[TrackInfo, AlbumInfo]) -> str:
     """Format an Info item for display."""
     return f"{info.artist} - {info.album} ({info.album_id})"
 
 
-def apply_album_metadata(album_info: AlbumInfo, album: Album):
+def apply_album_metadata(album_info: AlbumInfo, album: Album) -> None:
     """Set the album's metadata to match the AlbumInfo object."""
     album.artist = album_info.artist
     album.artists = album_info.artists
