@@ -102,7 +102,8 @@ class ImportModifyInfoPlugin(BeetsPlugin):  # type: ignore
 
                 for field, value in obj_mods.items():
                     if value is not None:
-                        # Indirect to deal with type conversions
+                        # Indirect to deal with type conversions, and allow for later
+                        # rules to match the modified values.
                         obj[field] = value
                         info[field] = obj[field]
 
