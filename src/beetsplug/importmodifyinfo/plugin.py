@@ -3,8 +3,8 @@
 import shlex
 from typing import Optional
 
-from beets.autotag import apply_item_metadata
 from beets.autotag import _apply_metadata
+from beets.autotag import apply_item_metadata
 from beets.autotag.hooks import AlbumInfo
 from beets.autotag.hooks import TrackInfo
 from beets.library import Album
@@ -23,7 +23,9 @@ class ImportModifyInfoPlugin(BeetsPlugin):  # type: ignore
 
     def __init__(self, name: Optional[str] = "importmodifyinfo") -> None:
         super().__init__(name)
-        self.config.add({"enabled": True, "modify_iteminfo": [], "modify_albuminfo": []})
+        self.config.add(
+            {"enabled": True, "modify_iteminfo": [], "modify_albuminfo": []}
+        )
         self.item_rules = self.album_rules = None
 
         if self.config["enabled"].get(bool):
@@ -37,7 +39,9 @@ class ImportModifyInfoPlugin(BeetsPlugin):  # type: ignore
             self.item_rules = self.get_modifies(item_modifies, Item, "modify_iteminfo")
         if self.album_rules is None:
             album_modifies = self.config["modify_albuminfo"].get(list)
-            self.album_rules = self.get_modifies(album_modifies, Album, "modify_albuminfo")
+            self.album_rules = self.get_modifies(
+                album_modifies, Album, "modify_albuminfo"
+            )
 
     def get_modifies(self, items, model_cls, context):
         """Parse modify items from configuration."""
@@ -102,9 +106,11 @@ class ImportModifyInfoPlugin(BeetsPlugin):  # type: ignore
                         obj[field] = value
                         info[field] = obj[field]
 
+
 def format_item(info):
     """Format an Info item for display."""
     return f"{info.artist} - {info.album} ({info.album_id})"
+
 
 def apply_album_metadata(album_info: AlbumInfo, album: Album):
     """Set the album's metadata to match the AlbumInfo object."""
