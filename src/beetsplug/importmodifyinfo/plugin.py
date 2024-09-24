@@ -1,11 +1,13 @@
 """ImportModifyInfo Plugin for Beets."""
 
 import shlex
+from typing import Dict
 from typing import List
 from typing import Optional
+from typing import Tuple
 from typing import Union
 
-from beets.autotag import _apply_metadata  # type: ignore
+from beets.autotag import SPECIAL_FIELDS  # type: ignore
 from beets.autotag import apply_item_metadata
 from beets.autotag.hooks import AlbumInfo  # type: ignore
 from beets.autotag.hooks import TrackInfo
@@ -22,9 +24,9 @@ from beets.util import as_string  # type: ignore
 from beets.util import functemplate
 
 
-Mods = dict[str, str]
-Dels = list[str]
-Rules = List[tuple[str, Query, Mods, Dels]]
+Mods = Dict[str, str]
+Dels = List[str]
+Rules = List[Tuple[str, Query, Mods, Dels]]
 
 
 class ImportModifyInfoPlugin(BeetsPlugin):  # type: ignore
@@ -70,7 +72,7 @@ class ImportModifyInfoPlugin(BeetsPlugin):  # type: ignore
             modifies.append((modify, dbquery, mods, dels))
         return modifies
 
-    def parse_modify(self, modify: str) -> tuple[str, Mods, Dels]:
+    def parse_modify(self, modify: str) -> Tuple[str, Mods, Dels]:
         """Parse modify string into query, mods, and dels."""
         modify = as_string(modify)
         args = shlex.split(modify)
@@ -138,4 +140,10 @@ def apply_album_metadata(album_info: AlbumInfo, album: Album) -> None:
     album.artist_credit = album_info.artist_credit
     album.artists_credit = album_info.artists_credit
 
-    _apply_metadata(album_info, album)
+    for field, value in album_info.items():
+        # We only overwrite fields that are not already hardcoded.
+        if field in SPECIAL_FIELDS["album"]:
+            continue
+        if value is None:
+            continue
+        album[field] = value
