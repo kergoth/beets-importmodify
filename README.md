@@ -23,7 +23,15 @@
 [ruff badge]: https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json
 [ruff project]: https://github.com/charliermarsh/ruff
 
-The [ImportModifyInfo](https://github.com/kergoth/beets-importmodifyinfo) Plugin for [Beets][] applies modifications to received metadata before import. This is largely intended to correct issues with imported metadata which would otherwise be lost on running `mbsync`. This plugin is inspired by the [ImportReplace][] Plugin and my old [modifyonimport][] plugin, but I found that those modifications would often be lost when running `mbsync` or equivalent.
+The [ImportModifyInfo](https://github.com/kergoth/beets-importmodifyinfo) Plugin for [Beets][] applies modifications to received metadata before import. This is largely intended to correct issues with imported metadata which would otherwise be lost on running `mbsync`. This plugin is inspired by the [ImportReplace][] Plugin and my old [modifyonimport][] plugin, but I found that those modifications would often be lost when running `mbsync` or equivalent. There is a limitation to the way this plugin works which is important to understand, **please** read the Limitations and Caveats section.
+
+## Limitations and Caveats
+
+This plugin's configuration looks like a command-line from the `modify` command. This is done for convenience, and to allow one to limit the scope of the modifications using a typical beets query. This is **not** `modify`, however, as the queries are against objects created from the importer, and modifications are made to the importer info, not the items in your library.
+
+This means that existing metadata from the files being imported is unavailable, as is existing metadata in the database when using `import -L`. This only has access to the metadata coming from the importer, i.e. MusicBrainz.
+
+Despite this limitation, it's valuable for correcting issues with importer metadata, or to make the imported metadata consistent.
 
 ## Installation
 
@@ -36,7 +44,9 @@ As the beets documentation describes in [Other plugins][], to use an external pl
 
 First, enable the `importmodifyinfo` plugin (see [Using Plugins][]).
 
-To configure the plugin, make a `importmodifyinfo:` section in your configuration file. Sections may be added for `modify_albuminfo` and `modify_trackinfo`, each of which is a list of strings as you would supply to the `modify` command. For example:
+To configure the plugin, make a `importmodifyinfo:` section in your configuration file. Sections may be added for `modify_albuminfo` and `modify_trackinfo`, each of which is a list of strings as you would supply to the `modify` command.
+
+For example:
 
 ```yaml
 importmodifyinfo:
