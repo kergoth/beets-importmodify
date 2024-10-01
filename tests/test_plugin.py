@@ -6,10 +6,10 @@ from typing import List
 
 import beets.plugins  # type: ignore
 import pytest
-from beets import config  # type: ignore
+from beets import config
 from beets.autotag.hooks import AlbumInfo  # type: ignore
 from beets.autotag.hooks import TrackInfo
-from beets.plugins import BeetsPlugin  # type: ignore
+from beets.plugins import BeetsPlugin
 from beets.plugins import find_plugins
 from beets.plugins import send
 from beets.test.helper import TestHelper  # type: ignore

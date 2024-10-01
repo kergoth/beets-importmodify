@@ -5,6 +5,7 @@ from typing import Dict
 from typing import List
 from typing import Optional
 from typing import Tuple
+from typing import Type
 from typing import Union
 
 from beets.autotag import SPECIAL_FIELDS  # type: ignore
@@ -55,7 +56,9 @@ class ImportModifyInfoPlugin(BeetsPlugin):  # type: ignore
             )
             self.configured = True
 
-    def get_modifies(self, items: List[str], model_cls: Model, context: str) -> Rules:
+    def get_modifies(
+        self, items: List[str], model_cls: Type[Model], context: str
+    ) -> Rules:
         """Parse modify items from configuration."""
         modifies = []
         for modify in items:
@@ -72,7 +75,7 @@ class ImportModifyInfoPlugin(BeetsPlugin):  # type: ignore
             modifies.append((modify, dbquery, mods, dels))
         return modifies
 
-    def parse_modify(self, modify: str) -> Tuple[str, Mods, Dels]:
+    def parse_modify(self, modify: str) -> Tuple[List[str], Mods, Dels]:
         """Parse modify string into query, mods, and dels."""
         modify = as_string(modify)
         args = shlex.split(modify)
@@ -100,7 +103,7 @@ class ImportModifyInfoPlugin(BeetsPlugin):  # type: ignore
         rules: Rules,
         info: Union[TrackInfo, AlbumInfo],
         obj: Union[Item, Album],
-        model_cls: Model,
+        model_cls: Type[Model],
     ) -> None:
         """Process rules for info on an object."""
         for _, query, mods, dels in rules:
