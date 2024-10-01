@@ -128,11 +128,6 @@ class ImportModifyInfoPlugin(BeetsPlugin):  # type: ignore
                     info[field] = obj[field]
 
 
-def format_item(info: Union[TrackInfo, AlbumInfo]) -> str:
-    """Format an Info item for display."""
-    return f"{info.artist} - {info.album} ({info.album_id})"
-
-
 def apply_album_metadata(album_info: AlbumInfo, album: Album) -> None:
     """Set the album's metadata to match the AlbumInfo object."""
     album.artist = album_info.artist
