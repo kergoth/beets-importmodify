@@ -139,6 +139,7 @@ def apply_album_metadata(album_info: AlbumInfo, album: Album) -> None:
     album.artists_sort = album_info.artists_sort
     album.artist_credit = album_info.artist_credit
     album.artists_credit = album_info.artists_credit
+    album.year = album_info.year
 
     for field, value in album_info.items():
         # We only overwrite fields that are not already hardcoded.
