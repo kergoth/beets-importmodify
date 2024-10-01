@@ -35,7 +35,7 @@ class ImportModifyInfoPlugin(BeetsPlugin):  # type: ignore
     def __init__(self, name: Optional[str] = "importmodifyinfo") -> None:
         super().__init__(name)
         self.config.add(
-            {"enabled": True, "modify_iteminfo": [], "modify_albuminfo": []}
+            {"enabled": True, "modify_trackinfo": [], "modify_albuminfo": []}
         )
         self.configured = False
 
@@ -46,8 +46,8 @@ class ImportModifyInfoPlugin(BeetsPlugin):  # type: ignore
     def set_rules(self) -> None:
         """Set rules from configuration."""
         if not self.configured:
-            item_modifies: List[str] = self.config["modify_iteminfo"].get(list)
-            self.item_rules = self.get_modifies(item_modifies, Item, "modify_iteminfo")
+            item_modifies: List[str] = self.config["modify_trackinfo"].get(list)
+            self.item_rules = self.get_modifies(item_modifies, Item, "modify_trackinfo")
 
             album_modifies: List[str] = self.config["modify_albuminfo"].get(list)
             self.album_rules = self.get_modifies(
