@@ -1,12 +1,13 @@
 """Tests for the 'importmodifyinfo' plugin."""
 
+from types import NoneType
 from typing import Any
-from typing import Iterator
 from typing import List
+from typing import Union
+from typing import get_type_hints
 
 import beets.plugins  # type: ignore
 import pytest
-from beets import config
 from beets.autotag.hooks import AlbumInfo  # type: ignore
 from beets.autotag.hooks import TrackInfo
 from beets.plugins import BeetsPlugin
@@ -15,7 +16,52 @@ from beets.plugins import send
 from beets.test.helper import TestHelper  # type: ignore
 from beets.ui import UserError  # type: ignore
 
-from beetsplug.importmodifyinfo import ImportModifyInfoPlugin
+
+def new_trackinfo() -> TrackInfo:
+    """Create a TrackInfo object for testing."""
+    info = TrackInfo(track_flex="flex", track_flex_none=None)
+    set_default_values(info)
+    return info
+
+
+def new_albuminfo() -> AlbumInfo:
+    """Create an AlbumInfo object for testing."""
+    track_info = new_trackinfo()
+    info = AlbumInfo(
+        year=2000,
+        tracks=[track_info],
+        albumtype="album",
+        albumtypes=["album", "remix"],
+        flex="flex",
+        flex_none=None,
+    )
+    set_default_values(info)
+    return info
+
+
+def set_default_values(info: Union[TrackInfo, AlbumInfo]) -> None:
+    """Set default values for testing TrackInfo or AlbumInfo."""
+    infotypes = get_type_hints(info.__init__)
+    for field, field_type in sorted(infotypes.items()):
+        if field_type is bool or field_type.__origin__ is bool:
+            continue
+        elif field_type.__origin__ is Union:
+            args = field_type.__args__
+            if args[1] == NoneType:
+                # Optional type
+                field_type = args[0]
+            else:
+                continue
+
+        if field_type is str:
+            info[field] = field
+        elif field_type is int:
+            info[field] = 0
+        elif field_type is float:
+            info[field] = 0.0
+        elif getattr(field_type, "__origin__", None) is list:
+            if field_type.__args__[0] is str:
+                info[field] = [field]
 
 
 class BeetsTestCase(TestHelper):  # type: ignore
@@ -38,26 +84,8 @@ class BeetsTestCase(TestHelper):  # type: ignore
         return find_plugins()  # type: ignore
 
 
-class ImportModifyInfoPluginTestDisabled(BeetsTestCase):
-    """Test cases for the importmodifyinfo beets plugin when disabled."""
-
-    def setup_method(self) -> None:
-        """Set up test cases."""
-        super().setup_method()
-
-        config["importmodifyinfo"]["enabled"] = False
-        ImportModifyInfoPlugin.listeners = None
-        ImportModifyInfoPlugin._raw_listeners = None
-        self.plugin = ImportModifyInfoPlugin(name="importmodifyinfo")
-
-    def test_disabled(self) -> None:
-        """Test if the plugin can be disabled."""
-        assert not self.plugin.config["enabled"].get(bool)
-        assert not self.plugin.__class__.listeners
-
-
-class TestImportModifyInfoPlugin(BeetsTestCase):
-    """Test cases for the importmodifyinfo beets plugin."""
+class ImportModifyInfoTestCase(BeetsTestCase):
+    """Base class for the importmodifyinfo beets plugin."""
 
     def setup_method(self) -> None:
         """Set up test cases."""
@@ -78,34 +106,26 @@ class TestImportModifyInfoPlugin(BeetsTestCase):
         """Set up configuration."""
         self.plugin.config.set(kwargs)
 
-    def new_trackinfo(self) -> TrackInfo:
-        """Create a TrackInfo object for testing."""
-        return TrackInfo(
-            title="title",
-            track_id="trackid",
-            index=0,
-            release_track_id="releasetrackid",
-            album="album",
-            flex="track flex",
-        )
 
-    def new_albuminfo(self) -> Iterator[AlbumInfo]:
-        """Create an AlbumInfo object for testing."""
-        track_info = self.new_trackinfo()
-        album_info = AlbumInfo(
-            artist="artist",
-            artists=["artist"],
-            album="album",
-            tracks=[track_info],
-            album_id="albumid",
-            artist_id="artistid",
-            flex="flex",
-            year=2000,
-            releasegroup_id="releasegroupid",
-            albuntype="album",
-            albumtypes=["album", "remix"],
-        )
-        return iter([album_info])
+class TestImportModifyInfoPluginDisabled(ImportModifyInfoTestCase):
+    """Test cases for the importmodifyinfo beets plugin when disabled."""
+
+    def setup_method(self) -> None:
+        """Set up test cases."""
+        self.setup_beets()
+        self.config["importmodifyinfo"]["enabled"] = False
+        BeetsPlugin.listeners = None
+        BeetsPlugin._raw_listeners = None
+        self.load_plugin()
+
+    def test_disabled(self) -> None:
+        """Test if the plugin can be disabled."""
+        assert not self.plugin.config["enabled"].get(True)
+        assert not BeetsPlugin.listeners
+
+
+class TestImportModifyInfoPlugin(ImportModifyInfoTestCase):
+    """Test cases for the importmodifyinfo beets plugin."""
 
     @pytest.mark.parametrize(
         "field,new_value",
@@ -118,7 +138,7 @@ class TestImportModifyInfoPlugin(BeetsTestCase):
     )
     def test_album_matching(self, field: str, new_value: str) -> None:
         """Test rules applied to an AlbumInfo object."""
-        albuminfo = next(self.new_albuminfo())
+        albuminfo = new_albuminfo()
         value = albuminfo[field]
 
         if isinstance(value, str):
@@ -135,14 +155,14 @@ class TestImportModifyInfoPlugin(BeetsTestCase):
 
     def test_unquoted_singleword(self) -> None:
         """Test rules applied to an AlbumInfo object without quotes."""
-        albuminfo = next(self.new_albuminfo())
+        albuminfo = new_albuminfo()
         self._setup_config(modify_albuminfo=["album:album album=new_album"])
         self.plugin.apply_albuminfo_rules(albuminfo)
         assert albuminfo["album"] == "new_album"
 
     def test_album_matching_multiple(self) -> None:
         """Test multiple rules applied to an AlbumInfo object."""
-        albuminfo = next(self.new_albuminfo())
+        albuminfo = new_albuminfo()
         self._setup_config(
             modify_albuminfo=[
                 f"album:'{albuminfo['album']}' album='new album'",
@@ -155,7 +175,7 @@ class TestImportModifyInfoPlugin(BeetsTestCase):
 
     def test_album_unmatched(self) -> None:
         """Test rules not applied to an AlbumInfo object."""
-        albuminfo = next(self.new_albuminfo())
+        albuminfo = new_albuminfo()
         self._setup_config(modify_albuminfo=["album:'not an album' album='new album'"])
         self.plugin.apply_albuminfo_rules(albuminfo)
         assert albuminfo["album"] == "album"
@@ -163,21 +183,21 @@ class TestImportModifyInfoPlugin(BeetsTestCase):
     def test_album_noquery(self) -> None:
         """Test that a rule with no query raises an error."""
         self._setup_config(modify_albuminfo=["a=b"])
-        albuminfo = next(self.new_albuminfo())
+        albuminfo = new_albuminfo()
         with pytest.raises(UserError, match="no query found"):
             self.plugin.apply_albuminfo_rules(albuminfo)
 
     def test_album_nomods(self) -> None:
         """Test that a rule with no mods raises an error."""
         self._setup_config(modify_albuminfo=["album:album"])
-        albuminfo = next(self.new_albuminfo())
+        albuminfo = new_albuminfo()
         with pytest.raises(UserError, match="no mods found"):
             self.plugin.apply_albuminfo_rules(albuminfo)
 
     def test_album_noquery_nomods(self) -> None:
         """Test that a rule with no query and no mods raises an error."""
         self._setup_config(modify_albuminfo=[""])
-        albuminfo = next(self.new_albuminfo())
+        albuminfo = new_albuminfo()
         with pytest.raises(UserError, match="no query found"):
             self.plugin.apply_albuminfo_rules(albuminfo)
 
@@ -187,16 +207,16 @@ class TestImportModifyInfoPlugin(BeetsTestCase):
         self._setup_config(
             modify_albuminfo=["artists:artist artists='new artist\0another artist'"]
         )
-        albuminfo = next(self.new_albuminfo())
+        albuminfo = new_albuminfo()
         self.plugin.apply_albuminfo_rules(albuminfo)
         assert albuminfo["artists"] == ["new artist", "another artist"]
 
     def test_album_semicolon_dsv(self) -> None:
         """Test setting a semicolon separated field on an album."""
         self._setup_config(
-            modify_albuminfo=["albumtypes:album albumtypes='album; remix; newtype'"]
+            modify_albuminfo=["albumtypes::album albumtypes='album; remix; newtype'"]
         )
-        albuminfo = next(self.new_albuminfo())
+        albuminfo = new_albuminfo()
         self.plugin.apply_albuminfo_rules(albuminfo)
         assert albuminfo["albumtypes"] == ["album", "remix", "newtype"]
 
@@ -208,7 +228,7 @@ class TestImportModifyInfoPlugin(BeetsTestCase):
                 "album:'new album' album='new album 2'",
             ]
         )
-        albuminfo = next(self.new_albuminfo())
+        albuminfo = new_albuminfo()
         self.plugin.apply_albuminfo_rules(albuminfo)
         assert albuminfo["album"] == "new album 2"
 
@@ -216,29 +236,63 @@ class TestImportModifyInfoPlugin(BeetsTestCase):
     def test_album_tracks(self) -> None:
         """Test matching against track fields on an AlbumInfo object."""
         self._setup_config(modify_albuminfo=["title:title album='new album'"])
-        albuminfo = next(self.new_albuminfo())
+        albuminfo = new_albuminfo()
         self.plugin.apply_albuminfo_rules(albuminfo)
         assert albuminfo["album"] == "new album"
 
     def test_track(self) -> None:
         """Test rules applied to a TrackInfo object."""
         self._setup_config(modify_trackinfo=["title:title title='new title'"])
-        trackinfo = self.new_trackinfo()
+        trackinfo = new_trackinfo()
         assert trackinfo.title == "title"
         self.plugin.apply_trackinfo_rules(trackinfo)
         assert trackinfo.title == "new title"
+
+    def test_multiple(self) -> None:
+        """Test rules applied to multiple info objects."""
+        self._setup_config(
+            modify_albuminfo=["album:album album='new album'"],
+            modify_trackinfo=["title:title title='new title'"],
+        )
+        albuminfo = new_albuminfo()
+        trackinfo = new_trackinfo()
+        self.plugin.apply_albuminfo_rules(albuminfo)
+        self.plugin.apply_trackinfo_rules(trackinfo)
+        assert albuminfo.album == "new album"
+        assert trackinfo.title == "new title"
+
+    def test_dels(self) -> None:
+        """Test deleting fields from an AlbumInfo object."""
+        self._setup_config(modify_albuminfo=["flex:flex flex!"])
+        albuminfo = new_albuminfo()
+        self.plugin.apply_albuminfo_rules(albuminfo)
+        assert "flex" not in albuminfo
+
+    def test_dels_not_present(self) -> None:
+        """Test deletion of a field that isn't present."""
+        self._setup_config(modify_albuminfo=["^flex2:flex2 flex2!"])
+        albuminfo = new_albuminfo()
+        self.plugin.apply_albuminfo_rules(albuminfo)
+        assert "flex2" not in albuminfo
+
+    def test_query_none_field(self) -> None:
+        """Test matching against a field that is None."""
+        self._setup_config(modify_albuminfo=[r"^flex_none::. flex_none='new flex'"])
+        albuminfo = new_albuminfo()
+        self.plugin.apply_albuminfo_rules(albuminfo)
+        assert albuminfo.flex_none == "new flex"
 
     @pytest.mark.parametrize(
         "field,new_value",
         [
             ("title", "new title"),
             ("album", "new album"),
-            ("flex", "new flex"),
+            ("track_flex", "new flex"),
         ],
     )
     def test_track_matching(self, field: str, new_value: str) -> None:
         """Test rules applied to an TrackInfo object."""
-        trackinfo = self.new_trackinfo()
+        trackinfo = new_trackinfo()
         value = trackinfo[field]
 
         if isinstance(value, str):
