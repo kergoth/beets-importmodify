@@ -1,5 +1,6 @@
 """Tests for the 'importmodifyinfo' plugin."""
 
+from typing import Any
 from typing import Iterator
 from typing import List
 
@@ -73,7 +74,7 @@ class TestImportModifyInfoPlugin(BeetsTestCase):
         else:
             self.fail("Plugin not loaded")
 
-    def _setup_config(self, **kwargs: str) -> None:
+    def _setup_config(self, **kwargs: Any) -> None:
         """Set up configuration."""
         self.plugin.config.set(kwargs)
 
