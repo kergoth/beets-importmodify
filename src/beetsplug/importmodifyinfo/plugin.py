@@ -122,11 +122,10 @@ class ImportModifyInfoPlugin(BeetsPlugin):  # type: ignore
                         pass
 
                 for field, value in obj_mods.items():
-                    if value is not None:
-                        # Indirect to deal with type conversions, and allow for later
-                        # rules to match the modified values.
-                        obj[field] = value
-                        info[field] = obj[field]
+                    # Indirect to deal with type conversions, and allow for later
+                    # rules to match the modified values.
+                    obj[field] = value
+                    info[field] = obj[field]
 
 
 def format_item(info: Union[TrackInfo, AlbumInfo]) -> str:
