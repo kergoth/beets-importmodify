@@ -247,6 +247,19 @@ class TestImportModifyInfoPlugin(ImportModifyInfoTestCase):
         self.plugin.apply_trackinfo_rules(trackinfo)
         assert trackinfo.title == "new title"
 
+    def test_formatted_modify(self) -> None:
+        """Test rules with formatted modify."""
+        self._setup_config(
+            modify_albuminfo=[
+                "albumtype::. ^albumtypes::[a-zA-Z] albumtypes=$albumtype"
+            ]
+        )
+        albuminfo = new_albuminfo()
+        albuminfo.albumtype = "album"
+        albuminfo.albumtypes = []
+        self.plugin.apply_albuminfo_rules(albuminfo)
+        assert albuminfo.albumtypes == ["album"]
+
     def test_multiple(self) -> None:
         """Test rules applied to multiple info objects."""
         self._setup_config(
