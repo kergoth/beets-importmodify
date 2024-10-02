@@ -1,6 +1,5 @@
 """Tests for the 'importmodifyinfo' plugin."""
 
-from types import NoneType
 from typing import Any
 from typing import List
 from typing import Union
@@ -47,7 +46,7 @@ def set_default_values(info: Union[TrackInfo, AlbumInfo]) -> None:
             continue
         elif field_type.__origin__ is Union:
             args = field_type.__args__
-            if args[1] == NoneType:
+            if args[1] == type(None):
                 # Optional type
                 field_type = args[0]
             else:
