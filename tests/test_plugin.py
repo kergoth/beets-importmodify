@@ -1,8 +1,12 @@
 """Tests for the 'importmodifyinfo' plugin."""
 
+from pathlib import Path
+from types import NoneType
+from types import UnionType
 from typing import Any
-from typing import List
 from typing import Union
+from typing import get_args
+from typing import get_origin
 from typing import get_type_hints
 
 import beets.plugins  # type: ignore
@@ -11,14 +15,19 @@ from beets.autotag.hooks import AlbumInfo  # type: ignore
 from beets.autotag.hooks import TrackInfo
 from beets.plugins import BeetsPlugin
 from beets.plugins import find_plugins
-from beets.plugins import send
 from beets.test.helper import TestHelper  # type: ignore
 from beets.ui import UserError  # type: ignore
 
 
 def new_trackinfo() -> TrackInfo:
     """Create a TrackInfo object for testing."""
-    info = TrackInfo(track_flex="flex", track_flex_none=None)
+    info = TrackInfo(
+        album="album",
+        artist="artist",
+        title="title",
+        track_flex="flex",
+        track_flex_none=None,
+    )
     set_default_values(info)
     return info
 
@@ -27,6 +36,8 @@ def new_albuminfo() -> AlbumInfo:
     """Create an AlbumInfo object for testing."""
     track_info = new_trackinfo()
     info = AlbumInfo(
+        album="album",
+        artist="artist",
         year=2000,
         tracks=[track_info],
         albumtype="album",
@@ -38,19 +49,24 @@ def new_albuminfo() -> AlbumInfo:
     return info
 
 
-def set_default_values(info: Union[TrackInfo, AlbumInfo]) -> None:
+def set_default_values(info: TrackInfo | AlbumInfo) -> None:
     """Set default values for testing TrackInfo or AlbumInfo."""
     infotypes = get_type_hints(info.__init__)
     for field, field_type in sorted(infotypes.items()):
-        if field_type is bool or field_type.__origin__ is bool:
+        if field in {"self", "kwargs", "return"}:
             continue
-        elif field_type.__origin__ is Union:
-            args = field_type.__args__
-            if args[1] is type(None):
-                # Optional type
-                field_type = args[0]
-            else:
+        if field_type in {bool, NoneType}:
+            continue
+
+        origin = get_origin(field_type)
+        args = get_args(field_type)
+        if origin in {Union, UnionType}:
+            non_none_args = [arg for arg in args if arg is not NoneType]
+            if len(non_none_args) != 1:
                 continue
+            field_type = non_none_args[0]
+            origin = get_origin(field_type)
+            args = get_args(field_type)
 
         if field_type is str:
             info[field] = field
@@ -58,9 +74,8 @@ def set_default_values(info: Union[TrackInfo, AlbumInfo]) -> None:
             info[field] = 0
         elif field_type is float:
             info[field] = 0.0
-        elif getattr(field_type, "__origin__", None) is list:
-            if field_type.__args__[0] is str:
-                info[field] = [field]
+        elif origin is list and args and args[0] is str:
+            info[field] = [field]
 
 
 class BeetsTestCase(TestHelper):  # type: ignore
@@ -74,12 +89,13 @@ class BeetsTestCase(TestHelper):  # type: ignore
         """Tear down test case."""
         self.teardown_beets()
 
-    def load_plugins(self, *plugins: str) -> List[BeetsPlugin]:
+    def load_plugins(self, *plugins: str) -> list[BeetsPlugin]:
         """Load and initialize plugins by names."""
         beets.plugins._instances.clear()
-        beets.plugins._classes.clear()
-        super().load_plugins(*plugins)
-        send("pluginload")
+        plugin_path = Path(__file__).resolve().parents[1] / "src" / "beetsplug"
+        self.config["pluginpath"] = [str(plugin_path)]
+        self.config["plugins"] = plugins
+        beets.plugins.load_plugins()
         return find_plugins()  # type: ignore
 
 
@@ -99,7 +115,7 @@ class ImportModifyInfoTestCase(BeetsTestCase):
                 self.plugin = plugin
                 break
         else:
-            self.fail("Plugin not loaded")
+            raise AssertionError("Plugin not loaded")
 
     def _setup_config(self, **kwargs: Any) -> None:
         """Set up configuration."""
@@ -113,14 +129,15 @@ class TestImportModifyInfoPluginDisabled(ImportModifyInfoTestCase):
         """Set up test cases."""
         self.setup_beets()
         self.config["importmodifyinfo"]["enabled"] = False
-        BeetsPlugin.listeners = None
-        BeetsPlugin._raw_listeners = None
+        BeetsPlugin.listeners.clear()
+        BeetsPlugin._raw_listeners.clear()
         self.load_plugin()
 
     def test_disabled(self) -> None:
         """Test if the plugin can be disabled."""
         assert not self.plugin.config["enabled"].get(True)
-        assert not BeetsPlugin.listeners
+        assert "trackinfo_received" not in BeetsPlugin.listeners
+        assert "albuminfo_received" not in BeetsPlugin.listeners
 
 
 class TestImportModifyInfoPlugin(ImportModifyInfoTestCase):
